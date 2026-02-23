@@ -42,8 +42,9 @@ const CONFIG = {
     OUTDOOR_SPAWN_INTERVAL: 10,
 
     // Debug
-    DEBUG_MODE: false
-
+    DEBUG_MODE: false,
+    //GOD MODE
+    NO_COLLISION_MODE: false
 
     //Power-Up
 
@@ -1669,7 +1670,103 @@ class Renderer {
         drawRow("FAST FALL", player.isFastFalling ? "ACTIVE" : "INACTIVE", 10, player.isFastFalling ? "#ff8800" : "#fff");
     }
 }
+// ═══════════════════════════════════════════════════════════════════════════
+// ███╗   ██╗ ██████╗ ████████╗██╗███████╗██╗ ██████╗ █████╗  ██████╗ █████╗  ██████╗
+// ████╗  ██║██╔═══██╗╚══██╔══╝██║██╔════╝██║██╔════╝██╔══██╗██╔════╝██╔══██╗██╔═══██╗
+// ██╔██╗ ██║██║   ██║   ██║   ██║█████╗  ██║██║     ███████║██║     ███████║██║   ██║
+// ██║╚██╗██║██║   ██║   ██║   ██║██╔══╝  ██║██║     ██╔══██║██║     ██╔══██║██║   ██║
+// ██║ ╚████║╚██████╔╝   ██║   ██║██║     ██║╚██████╗██║  ██║╚██████╗██║  ██║╚██████╔╝
+// ╚═╝  ╚═══╝ ╚═════╝    ╚═╝   ╚═╝╚═╝     ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝
+// ═══════════════════════════════════════════════════════════════════════════
 
+class NotificationManager {
+    static instance = null;
+
+    constructor() {
+        this.tripleJumpElement = document.getElementById('aviso-tripleJump');
+        this.tripleJumpShown = false;
+        this.isShowing = false;
+    }
+
+    /**
+     * Exibe o aviso de pulo triplo com animação
+     * @param {number} duration - Duração em milissegundos que o aviso ficará visível
+     */
+    showTripleJumpNotification(duration = 3000) {
+        if (this.isShowing || !this.tripleJumpElement) return;
+
+        console.log(' Pulo Triplo Ativado!');
+        
+        this.isShowing = true;
+        
+        // Mostrar com animação
+        this.tripleJumpElement.classList.remove('hide');
+        this.tripleJumpElement.classList.add('show');
+        
+        // Tocar som de power-up (opcional)
+        // AudioManager.instance?.play('powerup'); // Descomente se tiver um som de power-up
+        
+        // Criar partículas especiais
+        if (player && ParticleSystem.instance) {
+            ParticleSystem.create(
+                player.x + player.w / 2, 
+                player.y + player.h / 2, 
+                30, 
+                '#FFD700'
+            );
+        }
+        
+        // Esconder após o tempo especificado
+        setTimeout(() => {
+            this.hideTripleJumpNotification();
+        }, duration);
+    }
+
+    /**
+     * Esconde o aviso com animação de saída
+     */
+    hideTripleJumpNotification() {
+        if (!this.tripleJumpElement) return;
+
+        this.tripleJumpElement.classList.remove('show');
+        this.tripleJumpElement.classList.add('hide');
+        
+        // Limpar classes após a animação
+        setTimeout(() => {
+            this.tripleJumpElement.classList.remove('hide');
+            this.isShowing = false;
+        }, 500);
+    }
+
+    /**
+     * Reseta o estado (usado quando o jogo reinicia)
+     */
+    reset() {
+        this.tripleJumpShown = false;
+        this.isShowing = false;
+        if (this.tripleJumpElement) {
+            this.tripleJumpElement.classList.remove('show', 'hide');
+        }
+    }
+
+    /**
+     * Verifica se deve mostrar o aviso baseado no score
+     * @param {number} currentScore - Pontuação atual
+     * @param {number} previousScore - Pontuação anterior
+     */
+    checkTripleJumpUnlock(currentScore, previousScore) {
+        const threshold = DIFFICULTIES[currentDifficulty].tripleJumpScore;
+        
+        // Só mostra uma vez quando cruza o threshold
+        if (!this.tripleJumpShown && 
+            previousScore < threshold && 
+            currentScore >= threshold) {
+            
+            this.tripleJumpShown = true;
+            this.showTripleJumpNotification(3000);
+        }
+    }
+}
 // ═══════════════════════════════════════════════════════════════════════════
 //  ██████╗  █████╗ ███╗   ███╗███████╗
 // ██╔════╝ ██╔══██╗████╗ ████║██╔════╝
@@ -1722,6 +1819,10 @@ class Game {
         AudioManager.instance = new AudioManager();
         console.log('Game.init: AudioManager criado');
 
+        //sistema de sonificação
+        NotificationManager.instance = new NotificationManager();
+        console.log('Game.init: NotificationManager inicializado');
+
         // PASSO 3: Criar Renderer
         Renderer.instance = new Renderer(Game.canvas, Game.ctx);
         
@@ -1751,6 +1852,7 @@ class Game {
         
         console.log('Game.init: Inicialização concluída');
     }
+
 
     static resize() {
         if (!Game.canvas) return;
@@ -1807,6 +1909,7 @@ class Game {
     }
 
 
+
 //═══════════════════════════════════════════════════════════════════════════
 //   ██████╗ ██████╗ ███╗   ██╗████████╗██████╗  ██████╗ ██╗     ███████╗███████╗
 //  ██╔════╝██╔═══██╗████╗  ██║╚══██╔══╝██╔══██╗██╔═══██╗██║     ██╔════╝██╔════╝
@@ -1846,7 +1949,19 @@ class Game {
 
             if (e.code === 'KeyD') {
                 CONFIG.DEBUG_MODE = !CONFIG.DEBUG_MODE;
-                console.log('🐛 Debug Mode:', CONFIG.DEBUG_MODE ? 'ON' : 'OFF');
+                console.log(' Debug Mode:', CONFIG.DEBUG_MODE ? 'ON' : 'OFF');
+            }
+            if (e.code === 'KeyM' && e.shiftKey) {
+                e.preventDefault();
+                CONFIG.NO_COLLISION_MODE = !CONFIG.NO_COLLISION_MODE;
+                console.log(' God Mode (No Collision):', CONFIG.NO_COLLISION_MODE ? 'ON' : 'OFF');
+                
+                // Feedback visual
+                if (CONFIG.NO_COLLISION_MODE) {
+                    document.body.style.border = '5px solid gold';
+                } else {
+                    document.body.style.border = 'none';
+                }
             }
         });
 
@@ -1943,6 +2058,10 @@ class Game {
         powerUpManager.clear();
         ParticleSystem.instance.clear();
 
+        if(NotificationManager.instance) {
+            NotificationManager.instance.reset();
+        }
+
         player.y = player.groundY - player.h;
         player.dy = 0;
         player.jumpCount = 0;
@@ -1957,6 +2076,8 @@ class Game {
     }
 
     static update() {
+        const previousScore= gameState.score;
+        
         // Pontuação (sempre na velocidade normal)
         gameState.score = Math.floor(gameState.frameCount / CONFIG.SCORE_DIVISOR);
 
@@ -1986,7 +2107,9 @@ class Game {
         ParticleSystem.instance.update(gameState.currentSpeed);
 
         // Colisões
-        if (!gameState.activePowerUpCimed && obstacleManager.checkCollision(player.hitbox)) {
+        if (!CONFIG.NO_COLLISION_MODE && 
+            !gameState.activePowerUpCimed && 
+            obstacleManager.checkCollision(player.hitbox)) {
             Game.gameOver();
         }
 
@@ -2011,6 +2134,10 @@ class Game {
             gameState.activePowerUpCimed = null;
             // garante pelo menos 1s de delay após o fim do power-up
             gameState.obstacleSpawnBlockedUntilFrame = Math.max(gameState.obstacleSpawnBlockedUntilFrame || 0, gameState.frameCount + 60);
+        }
+
+        if(NotificationManager.instance) {
+            NotificationManager.instance.checkTripleJumpUnlock(gameState.score, previousScore);
         }
 
         gameState.frameCount++;
@@ -2087,6 +2214,20 @@ class Game {
         // Score
         if (gameState) {
             document.getElementById('score-display').innerText = gameState.score;
+        }
+
+        // Indicador de God Mode
+        if (CONFIG.NO_COLLISION_MODE) {
+            Game.ctx.save();
+            Game.ctx.fillStyle = 'rgb(255, 0, 0)';
+            Game.ctx.font = `bold ${32 * Game.scale}px monospace`;
+            Game.ctx.textAlign = 'center';
+            Game.ctx.strokeStyle = '#000';
+            Game.ctx.lineWidth = 3;
+            const text = ' GOD MODE ATIVO';
+            Game.ctx.strokeText(text, Game.canvas.width / 2, 40 * Game.scale);
+            Game.ctx.fillText(text, Game.canvas.width / 2, 40 * Game.scale);
+            Game.ctx.restore();
         }
     }
 

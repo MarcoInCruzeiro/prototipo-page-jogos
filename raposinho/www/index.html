@@ -389,6 +389,101 @@
             }
         }
 
+
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* SISTEMA DE AVISOS                                                */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .avisos {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #aviso-tripleJump {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            color: #001133;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-weight: 900;
+            font-size: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            box-shadow: 
+                0 0 30px rgba(255, 215, 0, 0.8),
+                0 0 60px rgba(255, 215, 0, 0.4),
+                0 10px 40px rgba(0, 0, 0, 0.5);
+            border: 3px solid #FFFFFF;
+            
+            /* Inicialmente escondido */
+            opacity: 0;
+            transform: scale(0.5) translateY(-50px);
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            display: none;
+        }
+
+        #aviso-tripleJump.show {
+            display: block;
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            animation: pulseGlow 1.5s ease-in-out infinite;
+        }
+
+        #aviso-tripleJump.hide {
+            opacity: 0;
+            transform: scale(0.8) translateY(50px);
+        }
+
+        /* Animação de brilho pulsante */
+        @keyframes pulseGlow {
+            0%, 100% {
+                box-shadow: 
+                    0 0 30px rgba(255, 215, 0, 0.8),
+                    0 0 60px rgba(255, 215, 0, 0.4),
+                    0 10px 40px rgba(0, 0, 0, 0.5);
+            }
+            50% {
+                box-shadow: 
+                    0 0 50px rgba(255, 215, 0, 1),
+                    0 0 100px rgba(255, 215, 0, 0.6),
+                    0 10px 40px rgba(0, 0, 0, 0.5);
+                transform: scale(1.05);
+            }
+        }
+
+        /* Ícone opcional (pode adicionar um emoji ou ícone) */
+        #aviso-tripleJump::before {
+            content: "🚀";
+            display: block;
+            font-size: 3rem;
+            margin-bottom: 10px;
+            animation: bounce 1s ease infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Responsivo */
+        @media (max-width: 600px) {
+            #aviso-tripleJump {
+                font-size: 1.5rem;
+                padding: 15px 30px;
+            }
+            
+            #aviso-tripleJump::before {
+                font-size: 2rem;
+            }
+        }
+    
+
+
     </style>
 </head>
 <body>
@@ -400,7 +495,7 @@
         <div id="start-screen" class="modal">
             <div class="modal-content">
                 <h1 class="title">Raposinho<br>Runner</h1>
-                <h2 class="subtitle">BETA</h2>
+                <h2 class="title">BETA</h2>
                 <p class="subtitle">Desvie dos obstáculos e tente ir longe!</p>
                 <hr class="divider">
                 <div class="controls-info" style="font-size: 1rem; line-height: 1.6; color: #ddd;">
@@ -412,7 +507,7 @@
                     <p>PC: Pressione <strong>W</strong> para pular e <strong>S</strong> para agachar ou Mergulhar</p>
                     <p>Mobile: <strong>Deslize</strong> na tela para Pular, Agachar ou Mergulhatr</p>
                     <p style="margin-top: 10px; font-size: 0.9em; color: #FFD700;">Dica: Pule duas vezes para ir mais alto!</p>
-                    <p style="margin-top: 4px; font-size: 0.8em; color: #ffffff;">Após 150 ponto pulo Triplo é ativado!</p>
+                    <p style="margin-top: 4px; font-size: 0.8em; color: #ffffff;">Após 100 ponto pulo Triplo é ativado!</p>
                 </div>
                 <button id="start-button" class="btn-main">JOGAR AGORA</button>
             </div>
@@ -448,7 +543,18 @@
                 Espere um pouco...
             </div>
         </div>
+
     </div>
+        <div class="avisos">
+            <div id="aviso-tripleJump">
+                <div class="aviso-icon-container">
+                    <svg class="bolt-icon" viewBox="0 0 24 24" width="60" height="60">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor"/>
+                    </svg>
+                </div>
+                <span class="texto-aviso">Pulo Triplo Ativado!</span>
+            </div>
+        </div>
 </div>
     </div>
 </section>
