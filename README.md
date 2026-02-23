@@ -2,7 +2,7 @@
 
 ## Sobre o Jogo
 
-**Raposinho Runner** é um jogo endless runner desenvolvido em JavaScript puro com Canvas API. O jogador controla o Raposinho, mascote oficial do Cruzeiro Esporte Clube, em uma corrida infinita onde deve desviar de obstáculos, coletar power-ups e alcançar a maior pontuação possível.
+**Raposinho Runner** é um jogo endless runner desenvolvido em JavaScript puro com Canvas API. O jogador controla o Raposinho, mascote oficial do Cruzeiro Esporte Clube, em uma corrida infinita onde deve desviar de obstáculos, coletar power-ups para alcançar a maior pontuação possível.
 
 ### Destaques
 
