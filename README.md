@@ -670,7 +670,7 @@ Gerencia a tela de carregamento com feedback visual:
 'Pintando o gramado...'
 ```
 
-**Timeout de Segurança:** 30 segundos (força inicialização mesmo com falhas, recomendo remover isso quando o projeto estiver em produção).
+**Timeout de Segurança:** 1 minuto (força inicialização mesmo com falhas, recomendo remover isso quando o projeto estiver em produção).
 
 ---
 

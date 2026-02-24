@@ -2463,18 +2463,18 @@ const loadingManager = new LoadingManager();
 // Mensagens amigáveis para cada tipo de asset
 const assetMessages = {
     'raposinho': 'Preparando o Raposinho...',
-    'jump': 'Treinando os pulos...',
-    'crouch': 'Aprendendo a se abaixar...',
+    'jump': 'Acordando...',
+    'crouch': 'Se alongando...',
     'fastfall': 'Praticando mergulhos...',
-    'fall': 'Testando a gravidade...',
+    'fall': 'Testando o Raposinho...',
     'juiz': 'Convocando os árbitros...',
     'bola': 'Enchendo as bolas...',
-    'chute': 'Dobrando as camisas...',
-    'Background': 'Montando o estádio...',
+    'chute': 'Vestindo a camisa...',
+    'Background': 'Preparando o estádio...',
     'outdoor': 'Instalando os outdoors...',
     'ground': 'Pintando o gramado...',
-    'PowerUp': 'Preparando power-ups...',
-    'PowerUpPlayer': 'Energizando o Raposinho...'
+    'PowerUp': 'Preparando as vitaminas...',
+    'PowerUpPlayer': 'Motivando o Raposinho...'
 };
 
 // Função para obter mensagem amigável
@@ -2484,16 +2484,16 @@ function getFriendlyMessage(assetName) {
             return assetMessages[key];
         }
     }
-    return `Carregando ${assetName}...`;
+    return `Carregando ${assetName}... Quase lá!`;
 }
 
 // Função para simular etapas de carregamento
 async function simulateLoadingSteps() {
     const steps = [
-        { progress: 10, message: 'Iniciando sistemas...', delay: 800 },
+        { progress: 10, message: 'Iniciando Transmissão...', delay: 800 },
         { progress: 25, message: 'Verificando recursos...', delay: 600 },
         { progress: 40, message: 'Preparando o campo...', delay: 700 },
-        { progress: 55, message: 'Aquecendo motores...', delay: 500 },
+        { progress: 55, message: 'Aquecendo os motores...', delay: 500 },
         { progress: 70, message: 'Calibrando física do jogo...', delay: 600 },
         { progress: 85, message: 'Finalizando preparações...', delay: 500 }
     ];
@@ -2593,13 +2593,13 @@ function loadAllAssets() {
             }
         });
         
-        // Timeout de segurança (30 segundos)
+        // Timeout de segurança (1 minuto)
         setTimeout(() => {
             if (loadedImages < totalImages) {
                 console.warn('Timeout: Forçando inicialização mesmo com imagens pendentes');
                 resolve();
             }
-        }, 30000);
+        }, 60000);
     });
 }
 
