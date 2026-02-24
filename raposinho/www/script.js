@@ -1722,6 +1722,53 @@ class NotificationManager {
         }, duration);
     }
 
+    showPowerUpNotification(type, duration = 3000) {
+        if (!type || this.isShowing) return;
+
+        // Buscar elemento de notificação (você precisa criar este elemento no HTML)
+        const powerUpElement = document.getElementById('aviso-powerup');
+        const titleElement = powerUpElement.querySelector('.title');
+        if (titleElement) {
+            titleElement.textContent = message.title;
+        }
+        
+        if (!powerUpElement) {
+            console.warn(' Elemento de notificação de power-up não encontrado no HTML');
+            return;
+        }
+
+        console.log(` Power-Up ${type.toUpperCase()} Notificado!`);
+        
+        this.isShowing = true;
+        
+        // Configurações de mensagem para cada tipo de power-up
+        const powerUpMessages = {
+            'lavitan': {
+                title: '⚡ LAVITAN ATIVADO! ⚡',
+                subtitle: 'Super Raposinho!',
+                color: '#FFD700',
+                icon: '⚡'
+            }
+        };
+
+        const message = powerUpMessages[type];
+        if (message) {
+            powerUpElement.querySelector('.title').textContent = message.title;
+            powerUpElement.querySelector('.subtitle').textContent = message.subtitle;
+            powerUpElement.style.color = message.color;
+            powerUpElement.querySelector('.icon').textContent = message.icon;
+            
+            // Mostrar com animação
+            powerUpElement.classList.remove('hide');
+            powerUpElement.classList.add('show');
+            
+            // Esconder após o tempo especificado
+            setTimeout(() => {
+                this.hidePowerUpNotification();
+            }, duration);
+        }
+    }
+
     /**
      * Esconde o aviso com animação de saída
      */
@@ -1736,6 +1783,20 @@ class NotificationManager {
             this.tripleJumpElement.classList.remove('hide');
             this.isShowing = false;
         }, 500);
+    }
+    hidePowerUpNotification() {
+        const powerUpElement = document.getElementById('aviso-powerup');
+        
+        if (!powerUpElement) return;
+
+        powerUpElement.classList.remove('show');
+        powerUpElement.classList.add('hide');
+        
+        // IMPORTANTE: Resetar a flag após a animação
+        setTimeout(() => {
+            powerUpElement.classList.remove('hide');
+            this.isShowing = false; // ← SEM ISSO, VAI TRAVAR!
+        }, 500); // Tempo da animação CSS
     }
 
     /**
@@ -2116,6 +2177,9 @@ class Game {
         // PowerUps
         const collectedPowerUp = powerUpManager.checkCollision(player.hitbox);
         if (collectedPowerUp) {
+            if (NotificationManager.instance) {
+            NotificationManager.instance.showPowerUpNotification(collectedPowerUp, 3000);
+            }
             const duration = powerUpsAssets[collectedPowerUp].effectDuration;
             const durationFrames = Math.floor(duration / (1000 / 60));
             gameState.slowMotionActive = true;
