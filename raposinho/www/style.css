@@ -153,6 +153,8 @@
             text-transform: uppercase;
         }
 
+
+
         .btn-main:hover {
             filter: brightness(1.1);
             transform: scale(1.02);
@@ -160,6 +162,41 @@
 
         .btn-main:active {
             transform: scale(0.98);
+        }
+
+        /* Estilo específico para o botão de Menu */
+        .btn-main.menu {
+            background-color: #ffffff; /* Cinza escuro para diferenciar do principal */
+            border: none;
+            border-bottom: 5px solid #ffffff; /* Efeito de profundidade 3D */
+            color: #ffffff;
+            padding: 10px 25px;
+            font-family: 'Press Start 2P', cursive, sans-serif; /* Fonte pixelada se tiver */
+            font-size: 0.9rem;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 15px;
+            transition: all 0.1s ease;
+            cursor: pointer;
+            text-transform: uppercase;
+            border-radius: 4px;
+        }
+
+        /* Efeito ao passar o mouse */
+        .btn-main.menu:hover {
+            background-color: #ffffff;
+            color: #00ffcc; /* Um brilho sutil para indicar seleção */
+        }
+
+        /* Efeito ao clicar */
+        .btn-main.menu:active {
+            border-bottom-width: 0px;
+        }
+
+        /* Opcional: Adicionar um ícone de "Home" ou "Voltar" via CSS */
+        .btn-main.menu::before {
+            content: '◀ ';
+
         }
 
         .difficulty-container {
