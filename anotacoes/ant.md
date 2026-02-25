@@ -79,13 +79,13 @@ class Player {
         this.isCrouching = false;
         this.isFastFalling = false;
       
-        // ✅ Flag para garantir que dimensões foram inicializadas
+        //  Flag para garantir que dimensões foram inicializadas
         this.dimensionsReady = false;
       
         console.log('Player criado com valores padrão');
     }
 
-    // ✅ Método público para inicializar dimensões (chamar DEPOIS do Game.resize)
+    //  Método público para inicializar dimensões (chamar DEPOIS do Game.resize)
     initDimensions() {
         if (!Game.canvas || !Game.scale || Game.scale <= 0) {
             console.warn('Player.initDimensions: Game não está pronto');
@@ -102,7 +102,7 @@ class Player {
       
         this.dimensionsReady = true;
       
-        console.log('✅ Player dimensões inicializadas:', {
+        console.log(' Player dimensões inicializadas:', {
             w: this.w.toFixed(1),
             h: this.h.toFixed(1),
             x: this.x.toFixed(1),
@@ -113,7 +113,7 @@ class Player {
         return true;
     }
 
-    // ✅ Atualizar dimensões durante resize (só posição e tamanho, não reset do estado)
+    //  Atualizar dimensões durante resize (só posição e tamanho, não reset do estado)
     updateDimensionsOnResize() {
         if (!Game.canvas || !Game.scale) return;
       
@@ -277,7 +277,7 @@ class Player {
     }
 
     draw(ctx) {
-        // ✅ Proteção melhorada
+        //  Proteção melhorada
         if (!this.dimensionsReady || this.w <= 0 || this.h <= 0) {
             console.warn('Player.draw: Dimensões inválidas, tentando inicializar...');
             if (!this.initDimensions()) {
@@ -350,19 +350,19 @@ static init() {
         return;
     }
 
-    // ✅ PASSO 1: Resize PRIMEIRO
+    //  PASSO 1: Resize PRIMEIRO
     Game.resize();
-    console.log('✅ Canvas configurado:', {
+    console.log(' Canvas configurado:', {
         width: Game.canvas.width,
         height: Game.canvas.height,
         scale: Game.scale.toFixed(2)
     });
 
-    // ✅ PASSO 2: Criar GameState
+    //  PASSO 2: Criar GameState
     gameState = new GameState();
     gameState.currentSpeed = CONFIG.BASE_SPEED * Game.scale; // ← Garantir velocidade inicial
 
-    // ✅ PASSO 3: Criar Player e INICIALIZAR dimensões
+    //  PASSO 3: Criar Player e INICIALIZAR dimensões
     player = new Player();
     if (!player.initDimensions()) {
         console.error('❌ Falha ao inicializar Player');
@@ -372,7 +372,7 @@ static init() {
         }, 200);
     }
 
-    // ✅ PASSO 4: Criar managers
+    //  PASSO 4: Criar managers
     obstacleManager = new ObstacleManager();
     outdoorManager = new OutdoorManager();
     powerUpManager = new PowerUpManager();
@@ -380,21 +380,21 @@ static init() {
     AudioManager.instance = new AudioManager();
     NotificationManager.instance = new NotificationManager();
 
-    // ✅ PASSO 5: Criar Renderer
+    //  PASSO 5: Criar Renderer
     Renderer.instance = new Renderer(Game.canvas, Game.ctx);
 
-    // ✅ PASSO 6: Criar BackgroundManager
+    //  PASSO 6: Criar BackgroundManager
     const bgImages = Images.bgSequence?.length ? Images.bgSequence : [];
     Renderer.instance.backgroundManager = new BackgroundManager(Game.canvas, bgImages);
 
-    // ✅ PASSO 7: Event listeners
+    //  PASSO 7: Event listeners
     Game.setupEventListeners();
 
-    // ✅ PASSO 8: Desenhar frame inicial
-    console.log('✅ Desenhando frame inicial');
+    //  PASSO 8: Desenhar frame inicial
+    console.log(' Desenhando frame inicial');
     Game.draw();
   
-    console.log('✅ Game.init: Concluído!');
+    console.log(' Game.init: Concluído!');
 }
 
 static resize() {
@@ -423,17 +423,17 @@ static resize() {
         Game.groundHeight = Math.max(40, viewportHeight * 0.08) * Game.scale;
     }
 
-    // ✅ Atualizar player se já existe
+    //  Atualizar player se já existe
     if (player) {
         player.updateDimensionsOnResize();
     }
 
-    // ✅ Atualizar background
+    //  Atualizar background
     if (Renderer.instance?.backgroundManager) {
         Renderer.instance.backgroundManager.resize();
     }
 
-    // ✅ Atualizar partículas
+    //  Atualizar partículas
     if (ParticleSystem.instance && !ParticleSystem.instance.glowParticles.length) {
         ParticleSystem.instance._initGlowParticles();
     }
@@ -460,7 +460,7 @@ class BackgroundManager {
         this.images = images && images.length ? images : [];
         this.segments = [];
         this.currentImageIndex = 0;
-        this.OVERLAP = 10; // ✅ Aumentado de 5 para 10
+        this.OVERLAP = 10; //  Aumentado de 5 para 10
       
         console.log('BackgroundManager: Inicializando com', this.images.length, 'imagens');
       
@@ -491,14 +491,14 @@ class BackgroundManager {
             return;
         }
 
-        // ✅ Criar 3 segmentos com OVERLAP garantido
+        //  Criar 3 segmentos com OVERLAP garantido
         const segment1 = this._createSegmentData(0);
         const segment2 = this._createSegmentData(segment1.width - this.OVERLAP);
         const segment3 = this._createSegmentData(segment2.x + segment2.width - this.OVERLAP);
       
         this.segments = [segment1, segment2, segment3];
       
-        console.log('✅ BackgroundManager: Segmentos criados:', this.segments.map(s => 
+        console.log(' BackgroundManager: Segmentos criados:', this.segments.map(s => 
             `x=${Math.floor(s.x)}, w=${Math.floor(s.width)}`
         ));
     }
@@ -510,7 +510,7 @@ class BackgroundManager {
             return {
                 x: startX,
                 y: 0,
-                width: this.canvas.width + 20, // ✅ Margem extra
+                width: this.canvas.width + 20, //  Margem extra
                 height: this.canvas.height + 20,
                 img: null
             };
@@ -522,7 +522,7 @@ class BackgroundManager {
         let width, height, offsetY = 0;
 
         if (imgRatio > canvasRatio) {
-            height = this.canvas.height + 20; // ✅ Margem extra
+            height = this.canvas.height + 20; //  Margem extra
             width = height * imgRatio;
         } else {
             width = this.canvas.width + 20;
@@ -562,7 +562,7 @@ class BackgroundManager {
             segment.x -= parallaxSpeed;
         }
 
-        // ✅ Reciclar com margem maior
+        //  Reciclar com margem maior
         const recycleThreshold = -this.segments[0].width - 100;
       
         if (this.segments[0].x < recycleThreshold) {
@@ -577,7 +577,7 @@ class BackgroundManager {
             console.log('🔄 Segmento reciclado, x:', Math.floor(newX));
         }
 
-        // ✅ Garantir mínimo de 3 segmentos
+        //  Garantir mínimo de 3 segmentos
         while (this.segments.length < 3) {
             const lastSegment = this.segments[this.segments.length - 1];
             const newX = lastSegment ? (lastSegment.x + lastSegment.width - this.OVERLAP) : this.canvas.width;
@@ -606,7 +606,7 @@ class BackgroundManager {
           
             if (!segment || typeof segment.x !== 'number') continue;
           
-            // ✅ Margem maior para garantir cobertura
+            //  Margem maior para garantir cobertura
             const margin = 150;
             if (segment.x + segment.width < -margin) continue;
             if (segment.x > this.canvas.width + margin) continue;
@@ -617,7 +617,7 @@ class BackgroundManager {
                         segment.img,
                         Math.floor(segment.x),
                         Math.floor(segment.y),
-                        Math.ceil(segment.width) + 1, // ✅ +1 para evitar gaps
+                        Math.ceil(segment.width) + 1, //  +1 para evitar gaps
                         Math.ceil(segment.height) + 1
                     );
                 } catch (e) {
@@ -657,18 +657,18 @@ hidePowerUpNotification() {
     const powerUpElement = document.getElementById('aviso-powerup');
   
     if (!powerUpElement) {
-        this.isShowing = false; // ✅ Resetar mesmo sem elemento
+        this.isShowing = false; //  Resetar mesmo sem elemento
         return;
     }
 
     powerUpElement.classList.remove('show');
     powerUpElement.classList.add('hide');
   
-    // ✅ CRÍTICO: Resetar flag após animação
+    //  CRÍTICO: Resetar flag após animação
     setTimeout(() => {
         powerUpElement.classList.remove('hide');
         this.isShowing = false; // ← ESSENCIAL!
-        console.log('✅ Notificação de PowerUp fechada, isShowing resetado');
+        console.log(' Notificação de PowerUp fechada, isShowing resetado');
     }, 500);
 }
 
@@ -687,11 +687,11 @@ showPowerUpNotification(type, duration = 3000) {
   
     if (!powerUpElement) {
         console.warn('showPowerUpNotification: Elemento não encontrado no HTML');
-        this.isShowing = false; // ✅ Garantir reset
+        this.isShowing = false; //  Garantir reset
         return;
     }
 
-    console.log(`✅ Power-Up ${type.toUpperCase()} Notificado!`);
+    console.log(` Power-Up ${type.toUpperCase()} Notificado!`);
   
     this.isShowing = true;
   
@@ -718,13 +718,13 @@ showPowerUpNotification(type, duration = 3000) {
         powerUpElement.classList.remove('hide');
         powerUpElement.classList.add('show');
       
-        // ✅ Esconder com timeout
+        //  Esconder com timeout
         setTimeout(() => {
             this.hidePowerUpNotification();
         }, duration);
     } else {
         console.error(`Mensagem não encontrada para o tipo: ${type}`);
-        this.isShowing = false; // ✅ Reset em caso de erro
+        this.isShowing = false; //  Reset em caso de erro
     }
 }
 ```
@@ -737,7 +737,7 @@ No `ObstacleManager._checkSpawn()`:
 
 ```javascript
 _checkSpawn() {
-    // ✅ Verificações mais robustas
+    //  Verificações mais robustas
     if (gameState.activePowerUpCimed) {
         console.log('🚫 Spawn bloqueado: PowerUp ativo');
         return;
@@ -745,7 +745,7 @@ _checkSpawn() {
   
     if (gameState.obstacleSpawnBlockedUntilFrame && 
         gameState.frameCount < gameState.obstacleSpawnBlockedUntilFrame) {
-        // ✅ Log ocasional para debug
+        //  Log ocasional para debug
         if (gameState.frameCount % 60 === 0) {
             const framesLeft = gameState.obstacleSpawnBlockedUntilFrame - gameState.frameCount;
             console.log(`🚫 Spawn bloqueado por mais ${Math.floor(framesLeft/60)}s`);
@@ -765,7 +765,7 @@ _checkSpawn() {
         const spawnChance = (CONFIG.BASE_SPAWN_CHANCE + (gameState.score * 0.0005)) * difficultyMod;
         if (Math.random() < spawnChance) {
             this.spawn();
-            console.log('✅ Obstáculo spawnado');
+            console.log(' Obstáculo spawnado');
         }
     }
 }
@@ -779,7 +779,7 @@ if (gameState.activePowerUpCimed && gameState.frameCount >= gameState.slowMotion
     console.log('⏱️ PowerUp terminando...');
     gameState.activePowerUpCimed = null;
   
-    // ✅ Garantir pelo menos 1.5s de delay após o fim do power-up
+    //  Garantir pelo menos 1.5s de delay após o fim do power-up
     const extraDelayFrames = 90; // ~1.5 segundos a 60 FPS
     const minBlockFrame = gameState.frameCount + extraDelayFrames;
     gameState.obstacleSpawnBlockedUntilFrame = Math.max(
@@ -787,7 +787,7 @@ if (gameState.activePowerUpCimed && gameState.frameCount >= gameState.slowMotion
         minBlockFrame
     );
   
-    console.log(`✅ Spawn bloqueado até frame ${gameState.obstacleSpawnBlockedUntilFrame}`);
+    console.log(` Spawn bloqueado até frame ${gameState.obstacleSpawnBlockedUntilFrame}`);
 }
 ```
 
@@ -826,7 +826,7 @@ static draw() {
         powerUpManager.draw(Game.ctx);
     }
   
-    // ✅ PLAYER com proteção extra
+    //  PLAYER com proteção extra
     if (player) {
         if (!player.dimensionsReady) {
             console.warn('⚠️ Player não está pronto, tentando inicializar...');
@@ -873,7 +873,7 @@ static draw() {
 
 ---
 
-## ✅ **CHECKLIST DE VERIFICAÇÃO**
+##  **CHECKLIST DE VERIFICAÇÃO**
 
 Após aplicar as correções, verifique:
 

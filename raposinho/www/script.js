@@ -365,26 +365,19 @@ class BackgroundManager {
         this.images = images && images.length ? images : [];
         this.segments = [];
         this.currentImageIndex = 0;
-        this.OVERLAP = 5; // Pixels de sobreposição para evitar gaps
-        
+        this.OVERLAP = 10; //  Aumentado de 5 para 10
+      
         console.log('BackgroundManager: Inicializando com', this.images.length, 'imagens');
-        
-        if (this.images.length === 0) {
-            console.error('BackgroundManager: Nenhuma imagem fornecida!');
-        }
-        
+      
         this._initSegments();
     }
 
     _initSegments() {
         this.segments = [];
-        
+      
         if (!this.canvas || this.canvas.width === 0 || this.canvas.height === 0) {
             console.warn('BackgroundManager: Canvas não está pronto ainda');
-            this.segments = [
-                { x: 0, width: 800, height: 600, img: null, y: 0 },
-                { x: 800, width: 800, height: 600, img: null, y: 0 }
-            ];
+            setTimeout(() => this._initSegments(), 100);
             return;
         }
 
@@ -397,53 +390,47 @@ class BackgroundManager {
             }
         }
 
-        if (!validImage) {
-            console.warn('BackgroundManager: Nenhuma imagem válida carregada');
-            this.segments = [
-                { x: 0, width: this.canvas.width, height: this.canvas.height, img: null, y: 0 },
-                { x: this.canvas.width, width: this.canvas.width, height: this.canvas.height, img: null, y: 0 }
-            ];
+        if (!validImage && this.images.length > 0) {
+            console.warn('BackgroundManager: Aguardando imagens carregarem...');
+            setTimeout(() => this._initSegments(), 200);
             return;
         }
 
-        // Criar 3 segmentos para garantir cobertura (em vez de 2)
+        //  Criar 3 segmentos com OVERLAP garantido
         const segment1 = this._createSegmentData(0);
         const segment2 = this._createSegmentData(segment1.width - this.OVERLAP);
         const segment3 = this._createSegmentData(segment2.x + segment2.width - this.OVERLAP);
-        
+      
         this.segments = [segment1, segment2, segment3];
-        
-        console.log('BackgroundManager: Segmentos criados:', this.segments.map(s => 
+      
+        console.log(' BackgroundManager: Segmentos criados:', this.segments.map(s => 
             `x=${Math.floor(s.x)}, w=${Math.floor(s.width)}`
         ));
     }
 
     _createSegmentData(startX) {
         const img = this._getNextImage();
-        
+      
         if (!img || !img.complete || img.naturalWidth === 0) {
             return {
                 x: startX,
                 y: 0,
-                width: this.canvas.width,
-                height: this.canvas.height,
+                width: this.canvas.width + 20, //  Margem extra
+                height: this.canvas.height + 20,
                 img: null
             };
         }
 
-        // Calcular dimensões garantindo cobertura total
         const imgRatio = img.naturalWidth / img.naturalHeight;
         const canvasRatio = this.canvas.width / this.canvas.height;
 
         let width, height, offsetY = 0;
 
         if (imgRatio > canvasRatio) {
-            // Imagem mais larga: ajustar pela altura com margem extra
-            height = this.canvas.height + 10; // Margem extra para evitar gaps
+            height = this.canvas.height + 20; //  Margem extra
             width = height * imgRatio;
         } else {
-            // Imagem mais alta: ajustar pela largura com margem extra
-            width = this.canvas.width + 10;
+            width = this.canvas.width + 20;
             height = width / imgRatio;
             offsetY = Math.max(0, (this.canvas.height - height) / 2);
         }
@@ -459,21 +446,20 @@ class BackgroundManager {
 
     _getNextImage() {
         if (this.images.length === 0) return null;
-        
+      
         const img = this.images[this.currentImageIndex];
         this.currentImageIndex = (this.currentImageIndex + 1) % this.images.length;
-        
+      
         return img;
     }
 
     update(speed) {
         if (!this.segments || this.segments.length === 0) {
-            console.warn('BackgroundManager.update: Sem segmentos, reinicializando');
+            console.warn('BackgroundManager.update: Reinicializando segmentos');
             this._initSegments();
             return;
         }
 
-        // Parallax speed (30% da velocidade do jogo)
         const parallaxSpeed = speed * 0.3;
 
         // Mover todos os segmentos
@@ -481,32 +467,27 @@ class BackgroundManager {
             segment.x -= parallaxSpeed;
         }
 
-        // Verificar se precisa reciclar (com buffer maior)
-        const recycleThreshold = -this.segments[0].width - 50; // Buffer de 50px
-        
+        //  Reciclar com margem maior
+        const recycleThreshold = -this.segments[0].width - 100;
+      
         if (this.segments[0].x < recycleThreshold) {
-            // Remove o primeiro
             this.segments.shift();
-            
-            // Pega o último segmento
+          
             const lastSegment = this.segments[this.segments.length - 1];
-            
-            // Calcula posição com overlap para evitar gaps
             const newX = lastSegment.x + lastSegment.width - this.OVERLAP;
-            
-            // Cria e adiciona novo segmento
+          
             const newSegment = this._createSegmentData(newX);
             this.segments.push(newSegment);
-            
-            console.log('BackgroundManager: Segmento reciclado, x:', Math.floor(newX), 'segmentos totais:', this.segments.length);
+          
+            console.log('🔄 Segmento reciclado, x:', Math.floor(newX));
         }
 
-        // PROTEÇÃO: Garantir que sempre há pelo menos 2 segmentos visíveis
-        if (this.segments.length < 2) {
-            console.warn('BackgroundManager: Menos de 2 segmentos, corrigindo');
+        //  Garantir mínimo de 3 segmentos
+        while (this.segments.length < 3) {
             const lastSegment = this.segments[this.segments.length - 1];
             const newX = lastSegment ? (lastSegment.x + lastSegment.width - this.OVERLAP) : this.canvas.width;
             this.segments.push(this._createSegmentData(newX));
+            console.warn(' Adicionando segmento de emergência!');
         }
     }
 
@@ -515,7 +496,7 @@ class BackgroundManager {
 
         this.update(speed);
 
-        // Desenhar gradiente de fundo (sempre primeiro)
+        // Fundo gradiente (sempre primeiro)
         const gradient = ctx.createLinearGradient(0, 0, 0, this.canvas.height);
         gradient.addColorStop(0, '#0a1a4f');
         gradient.addColorStop(1, '#4a108a');
@@ -527,52 +508,40 @@ class BackgroundManager {
         // Desenhar segmentos
         for (let i = 0; i < this.segments.length; i++) {
             const segment = this.segments[i];
-            
-            // Verificação de segmento válido
+          
             if (!segment || typeof segment.x !== 'number') continue;
-            
-            // Pular apenas se COMPLETAMENTE fora da tela (com margem)
-            const margin = 100;
+          
+            //  Margem maior para garantir cobertura
+            const margin = 150;
             if (segment.x + segment.width < -margin) continue;
             if (segment.x > this.canvas.width + margin) continue;
 
-            // Desenhar imagem ou fallback
             if (segment.img && segment.img.complete && segment.img.naturalWidth > 0) {
                 try {
                     ctx.drawImage(
                         segment.img,
                         Math.floor(segment.x),
                         Math.floor(segment.y),
-                        Math.ceil(segment.width),
-                        Math.ceil(segment.height)
+                        Math.ceil(segment.width) + 1, //  +1 para evitar gaps
+                        Math.ceil(segment.height) + 1
                     );
                 } catch (e) {
-                    console.error('Erro ao desenhar background segmento', i, ':', e);
-                    // Desenhar fallback em caso de erro
+                    console.error('Erro ao desenhar background:', e);
+                    // Fallback
                     ctx.fillStyle = i % 2 === 0 ? 'rgba(20, 40, 100, 0.5)' : 'rgba(40, 20, 100, 0.5)';
-                    ctx.fillRect(
-                        Math.floor(segment.x),
-                        Math.floor(segment.y),
-                        Math.ceil(segment.width),
-                        Math.ceil(segment.height)
-                    );
+                    ctx.fillRect(Math.floor(segment.x), Math.floor(segment.y), Math.ceil(segment.width), Math.ceil(segment.height));
                 }
             } else {
-                // Fallback visual quando imagem não está disponível
+                // Fallback
                 ctx.fillStyle = i % 2 === 0 ? 'rgba(20, 40, 100, 0.3)' : 'rgba(40, 20, 100, 0.3)';
-                ctx.fillRect(
-                    Math.floor(segment.x),
-                    Math.floor(segment.y),
-                    Math.ceil(segment.width),
-                    Math.ceil(segment.height)
-                );
+                ctx.fillRect(Math.floor(segment.x), Math.floor(segment.y), Math.ceil(segment.width), Math.ceil(segment.height));
             }
         }
     }
 
     resize() {
         console.log('BackgroundManager.resize chamado');
-        
+      
         if (!this.canvas || this.canvas.width === 0 || this.canvas.height === 0) {
             console.warn('BackgroundManager.resize: Canvas não está pronto');
             setTimeout(() => this.resize(), 100);
@@ -1503,7 +1472,7 @@ class Renderer {
 
     drawGround() {
         const ctx = this.ctx;
-        const groundY = this.canvas.height - Game.groundHeight;
+        const groundY = this.canvas.height - Game.groundHeight ;
 
         if (Images.ground?.complete) {
             ctx.save();
@@ -1712,7 +1681,7 @@ class NotificationManager {
                 player.x + player.w / 2, 
                 player.y + player.h / 2, 
                 30, 
-                '#FFD700'
+                '#ffffff'
             );
         }
         
@@ -1722,111 +1691,110 @@ class NotificationManager {
         }, duration);
     }
 
-    showPowerUpNotification(type, duration = 3000) {
-        if (!type || this.isShowing) return;
 
-        // Buscar elemento de notificação (você precisa criar este elemento no HTML)
+
+    /**
+     * Esconde o aviso com animação de saída
+     */
+    hidePowerUpNotification() {
         const powerUpElement = document.getElementById('aviso-powerup');
-        const titleElement = powerUpElement.querySelector('.title');
-        if (titleElement) {
-            titleElement.textContent = message.title;
-        }
-        
+    
         if (!powerUpElement) {
-            console.warn(' Elemento de notificação de power-up não encontrado no HTML');
+            this.isShowing = false; //  Resetar mesmo sem elemento
+            return;
+        }
+
+        powerUpElement.classList.remove('show');
+        powerUpElement.classList.add('hide');
+    
+        //  CRÍTICO: Resetar flag após animação
+        setTimeout(() => {
+            powerUpElement.classList.remove('hide');
+            this.isShowing = false; // ← ESSENCIAL!
+            console.log(' Notificação de PowerUp fechada, isShowing resetado');
+        }, 500);
+    }
+    hideTripleJumpNotification() {
+        if (!this.tripleJumpElement) return;
+        
+        this.tripleJumpElement.classList.remove('show');
+        this.tripleJumpElement.classList.add('hide');
+        
+        setTimeout(() => {
+            this.tripleJumpElement.classList.remove('hide');
+            this.isShowing = false;
+        }, 500);
+    }
+
+    showPowerUpNotification(type, duration = 3000) {
+        if (!type) {
+            console.warn('showPowerUpNotification: tipo não fornecido');
+            return;
+        }
+    
+        if (this.isShowing) {
+            console.warn('showPowerUpNotification: Notificação já está sendo exibida');
+            return;
+        }
+
+        const powerUpElement = document.getElementById('aviso-powerup');
+    
+        if (!powerUpElement) {
+            console.warn('showPowerUpNotification: Elemento não encontrado no HTML');
+            this.isShowing = false; //  Garantir reset
             return;
         }
 
         console.log(` Power-Up ${type.toUpperCase()} Notificado!`);
-        
+    
         this.isShowing = true;
-        
-        // Configurações de mensagem para cada tipo de power-up
+    
         const powerUpMessages = {
             'lavitan': {
-                title: '⚡ LAVITAN ATIVADO! ⚡',
+                title: '⚡ LAVITAN ENCONTRADO! ⚡',
                 subtitle: 'Super Raposinho!',
-                color: '#FFD700',
+                color: '#ffffff',
                 icon: '⚡'
             }
         };
 
         const message = powerUpMessages[type];
         if (message) {
-            powerUpElement.querySelector('.title').textContent = message.title;
-            powerUpElement.querySelector('.subtitle').textContent = message.subtitle;
+            const titleElement = powerUpElement.querySelector('.title');
+            const subtitleElement = powerUpElement.querySelector('.subtitle');
+            const iconElement = powerUpElement.querySelector('.icon');
+        
+            if (titleElement) titleElement.textContent = message.title;
+            if (subtitleElement) subtitleElement.textContent = message.subtitle;
+            if (iconElement) iconElement.textContent = message.icon;
             powerUpElement.style.color = message.color;
-            powerUpElement.querySelector('.icon').textContent = message.icon;
-            
-            // Mostrar com animação
+        
             powerUpElement.classList.remove('hide');
             powerUpElement.classList.add('show');
-            
-            // Esconder após o tempo especificado
+        
+            //  Esconder com timeout
             setTimeout(() => {
                 this.hidePowerUpNotification();
             }, duration);
+        } else {
+            console.error(`Mensagem não encontrada para o tipo: ${type}`);
+            this.isShowing = false; //  Reset em caso de erro
         }
     }
-
-    /**
-     * Esconde o aviso com animação de saída
-     */
-    hideTripleJumpNotification() {
-        if (!this.tripleJumpElement) return;
-
-        this.tripleJumpElement.classList.remove('show');
-        this.tripleJumpElement.classList.add('hide');
-        
-        // Limpar classes após a animação
-        setTimeout(() => {
-            this.tripleJumpElement.classList.remove('hide');
-            this.isShowing = false;
-        }, 500);
-    }
-    hidePowerUpNotification() {
-        const powerUpElement = document.getElementById('aviso-powerup');
-        
-        if (!powerUpElement) return;
-
-        powerUpElement.classList.remove('show');
-        powerUpElement.classList.add('hide');
-        
-        // IMPORTANTE: Resetar a flag após a animação
-        setTimeout(() => {
-            powerUpElement.classList.remove('hide');
-            this.isShowing = false; // ← SEM ISSO, VAI TRAVAR!
-        }, 500); // Tempo da animação CSS
-    }
-
-    /**
-     * Reseta o estado (usado quando o jogo reinicia)
-     */
     reset() {
-        this.tripleJumpShown = false;
+        this.hideTripleJumpNotification();
+        this.hidePowerUpNotification();
         this.isShowing = false;
-        if (this.tripleJumpElement) {
-            this.tripleJumpElement.classList.remove('show', 'hide');
+        console.log('NotificationManager: Resetado');
+    }
+
+    checkTripleJumpUnlock(currentScore, previousScore) {
+        if (!this.tripleJumpShown && currentScore >= CONFIG.TRIPLE_JUMP_UNLOCK_SCORE) {
+            this.showTripleJumpNotification();
+            this.tripleJumpShown = true;
         }
     }
 
-    /**
-     * Verifica se deve mostrar o aviso baseado no score
-     * @param {number} currentScore - Pontuação atual
-     * @param {number} previousScore - Pontuação anterior
-     */
-    checkTripleJumpUnlock(currentScore, previousScore) {
-        const threshold = DIFFICULTIES[currentDifficulty].tripleJumpScore;
-        
-        // Só mostra uma vez quando cruza o threshold
-        if (!this.tripleJumpShown && 
-            previousScore < threshold && 
-            currentScore >= threshold) {
-            
-            this.tripleJumpShown = true;
-            this.showTripleJumpNotification(3000);
-        }
-    }
 }
 // ═══════════════════════════════════════════════════════════════════════════
 //  ██████╗  █████╗ ███╗   ███╗███████╗
@@ -1844,133 +1812,109 @@ class Game {
     static groundHeight = CONFIG.GROUND_HEIGHT;
 
     static init() {
-        console.log('Game.init: Começando inicialização');
-        
-        if (!Game.canvas) Game.canvas = document.getElementById('gameCanvas');
-        if (!Game.ctx && Game.canvas) Game.ctx = Game.canvas.getContext('2d');
+    console.log('🎮 Game.init: Iniciando...');
+  
+    if (!Game.canvas) Game.canvas = document.getElementById('gameCanvas');
+    if (!Game.ctx && Game.canvas) Game.ctx = Game.canvas.getContext('2d');
 
-        if (!Game.canvas || !Game.ctx) {
-            console.error('ERRO CRÍTICO: Canvas ou contexto não encontrado!');
-            return;
-        }
-
-        // PASSO 1: Configurar canvas
-        Game.resize();
-        console.log('Game.init: Canvas redimensionado', {
-            width: Game.canvas.width,
-            height: Game.canvas.height,
-            scale: Game.scale
-        });
-
-        // PASSO 2: Criar objetos do jogo
-        gameState = new GameState();
-        console.log('Game.init: GameState criado, velocidade inicial:', gameState.currentSpeed);
-
-        player = new Player();
-        console.log('Game.init: Player criado', { x: player.x, y: player.y, w: player.w, h: player.h });
-
-        obstacleManager = new ObstacleManager();
-        outdoorManager = new OutdoorManager();
-        powerUpManager = new PowerUpManager();
-        
-        ParticleSystem.instance = new ParticleSystem();
-        console.log('Game.init: Sistemas auxiliares criados');
-
-        //Carregar Som
-        AudioManager.instance = new AudioManager();
-        console.log('Game.init: AudioManager criado');
-
-        //sistema de sonificação
-        NotificationManager.instance = new NotificationManager();
-        console.log('Game.init: NotificationManager inicializado');
-
-        // PASSO 3: Criar Renderer
-        Renderer.instance = new Renderer(Game.canvas, Game.ctx);
-        
-        // PASSO 4: Criar BackgroundManager
-        const bgImages = Images.bgSequence && Images.bgSequence.length ? Images.bgSequence : [];
-        console.log('Game.init: Criando BackgroundManager com', bgImages.length, 'imagens');
-        
-        if (bgImages.length > 0) {
-            bgImages.forEach((img, i) => {
-                console.log(`  Imagem ${i}:`, {
-                    complete: img.complete,
-                    width: img.naturalWidth,
-                    height: img.naturalHeight,
-                    src: img.src
-                });
-            });
-        }
-        
-        Renderer.instance.backgroundManager = new BackgroundManager(Game.canvas, bgImages);
-
-        // PASSO 5: Event listeners
-        Game.setupEventListeners();
-
-        // PASSO 6: Desenhar frame inicial
-        console.log('Game.init: Desenhando frame inicial');
-        Game.draw();
-        
-        console.log('Game.init: Inicialização concluída');
+    if (!Game.canvas || !Game.ctx) {
+        console.error('❌ ERRO CRÍTICO: Canvas não encontrado!');
+        return;
     }
 
+    //  PASSO 1: Resize PRIMEIRO
+    Game.resize();
+    console.log(' Canvas configurado:', {
+        width: Game.canvas.width,
+        height: Game.canvas.height,
+        scale: Game.scale.toFixed(2)
+    });
 
-    static resize() {
-        if (!Game.canvas) return;
+    //  PASSO 2: Criar GameState
+    gameState = new GameState();
+    gameState.currentSpeed = CONFIG.BASE_SPEED * Game.scale; // ← Garantir velocidade inicial
 
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
+    //  PASSO 3: Criar Player e INICIALIZAR dimensões
+    player = new Player();
 
-        Game.canvas.width = viewportWidth;
-        Game.canvas.height = viewportHeight;
+    //  PASSO 4: Criar managers
+    obstacleManager = new ObstacleManager();
+    outdoorManager = new OutdoorManager();
+    powerUpManager = new PowerUpManager();
+    ParticleSystem.instance = new ParticleSystem();
+    AudioManager.instance = new AudioManager();
+    NotificationManager.instance = new NotificationManager();
 
-        const isPortrait = viewportHeight > viewportWidth;
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || viewportWidth <= 768;
+    //  PASSO 5: Criar Renderer
+    Renderer.instance = new Renderer(Game.canvas, Game.ctx);
 
-        if (isPortrait) {
-            Game.scale = Math.min(viewportWidth / 650, viewportHeight / 850);
-        } else {
-            Game.scale = Math.min(viewportWidth / 800, viewportHeight / 500);
-        }
+    //  PASSO 6: Criar BackgroundManager
+    const bgImages = Images.bgSequence?.length ? Images.bgSequence : [];
+    Renderer.instance.backgroundManager = new BackgroundManager(Game.canvas, bgImages);
 
-        Game.scale = Math.max(0.5, Math.min(Game.scale, 2.5));
+    //  PASSO 7: Event listeners
+    Game.setupEventListeners();
 
-        if (isMobile) {
-            Game.groundHeight = Math.max(80, viewportHeight * 0.08) * Game.scale;
-        } else {
-            Game.groundHeight = Math.max(40, viewportHeight * 0.08) * Game.scale;
-        }
+    //  PASSO 8: Desenhar frame inicial
+    console.log(' Desenhando frame inicial');
+    Game.draw();
+  
+    console.log(' Game.init: Concluído!');
+}
 
-        if (player) {
-            const playerBaseSize = 60 * Game.scale;
-            player.w = playerBaseSize;
-            player.h = playerBaseSize;
-            player.originalH = playerBaseSize;
-            player.x = Game.canvas.width * 0.1;
-            player.groundY = Game.canvas.height - Game.groundHeight - (5 * Game.scale);
+static resize() {
+    if (!Game.canvas) return;
 
-            if (!gameState?.isRunning) {
-                player.y = player.groundY - player.h;
-                player.dy = 0;
-            }
-        }
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
 
-        // ADICIONE ESTA LINHA:
-        if (Renderer.instance?.backgroundManager) {
-            Renderer.instance.backgroundManager.resize();
-        }
+    Game.canvas.width = viewportWidth;
+    Game.canvas.height = viewportHeight;
 
-        console.log('Resize:', {
-            width: Game.canvas.width,
-            height: Game.canvas.height,
-            scale: Game.scale.toFixed(2),
-            groundHeight: Math.floor(Game.groundHeight),
-            isMobile
-        });
+    const isPortrait = viewportHeight > viewportWidth;
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || viewportWidth <= 768;
+
+    if (isPortrait) {
+        Game.scale = Math.min(viewportWidth / 650, viewportHeight / 850);
+    } else {
+        Game.scale = Math.min(viewportWidth / 800, viewportHeight / 500);
     }
 
+    Game.scale = Math.max(0.5, Math.min(Game.scale, 2.5));
+
+    if (isMobile) {
+        Game.groundHeight = Math.max(80, viewportHeight * 0.08) * Game.scale;
+    } else {
+        Game.groundHeight = Math.max(40, viewportHeight * 0.08) * Game.scale;
+    }
+
+    //  Atualizar player se já existe
+    if (player) {
+        player._updateDimensions();
+    }
+
+    //  Atualizar background
+    if (Renderer.instance?.backgroundManager) {
+        Renderer.instance.backgroundManager.resize();
+    }
+
+    //  Atualizar partículas
+    if (ParticleSystem.instance && !ParticleSystem.instance.glowParticles.length) {
+        ParticleSystem.instance._initGlowParticles();
+    }
+
+    console.log(' Resize:', {
+        width: Game.canvas.width,
+        height: Game.canvas.height,
+        scale: Game.scale.toFixed(2),
+        groundHeight: Math.floor(Game.groundHeight),
+        isMobile,
+        isPortrait
+    });
+}
 
 
+ 
 //═══════════════════════════════════════════════════════════════════════════
 //   ██████╗ ██████╗ ███╗   ██╗████████╗██████╗  ██████╗ ██╗     ███████╗███████╗
 //  ██╔════╝██╔═══██╗████╗  ██║╚══██╔══╝██╔══██╗██╔═══██╗██║     ██╔════╝██╔════╝
