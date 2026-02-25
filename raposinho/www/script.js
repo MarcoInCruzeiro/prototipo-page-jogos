@@ -2232,7 +2232,7 @@ static resize() {
             Game.ctx.textAlign = 'center';
             Game.ctx.strokeStyle = '#000';
             Game.ctx.lineWidth = 3;
-            const text = ' GOD MODE ATIVO';
+            const text = ' ';
             Game.ctx.strokeText(text, Game.canvas.width / 2, 40 * Game.scale);
             Game.ctx.fillText(text, Game.canvas.width / 2, 40 * Game.scale);
             Game.ctx.restore();
