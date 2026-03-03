@@ -44,10 +44,18 @@ const CONFIG = {
     // Debug
     DEBUG_MODE: false,
     //GOD MODE
-    NO_COLLISION_MODE: false
+    NO_COLLISION_MODE: false,
 
     //Power-Up
+    //Ainda não foi definido nenhuma constante pois não temos um powerup oficial
 
+
+    // Plataformas
+    PLATFORM_WIDTH: 950,
+    PLATFORM_HEIGHT: 100,
+    PLATFORM_MIN_DISTANCE: 700,
+    PLATFORM_MAX_DISTANCE: 1200,
+    PLATFORM_SPAWN_CHANCE: 0.05
 };
 
 
@@ -97,7 +105,8 @@ const ASSETS = {
         './img/IMAGEM_JOGO1.png',
     ],
     outdoor: 'https://image.crm.cruzeiro.com.br/lib/fe34117371640478741c71/m/1/bc38933e-eec1-49ea-b35c-8b01d3f74036.png',
-    ground: './img/ground-minigame.png'
+    ground: './img/ground-minigame.png',
+    platform: './img/plataform.png'
 };
 
 // Carregar imagens
@@ -152,7 +161,7 @@ Object.keys(powerUpsAssets).forEach(key => {
 
 const AUDIO_ASSETS = {
     bgMusic: './sound/HINO DO CRUZEIRO - 8BITS .mp3',
-    gameOver: './sound/lumora_studios-pixel-game-over.mp3',
+    gameOver: './sound/mixkit-player-losing-or-failing-2042.wav',
     jump: './sound/freesound_community-sfx_jump.mp3'
 }
 
@@ -1067,6 +1076,132 @@ class ObstacleManager {
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ██████╗ ██╗      █████╗ ████████╗ █████╗ ███████╗ ██████╗ ██████╗ ███╗   ███╗ █████╗ ███████╗
+// ██╔══██╗██║     ██╔══██╗╚══██╔══╝██╔══██╗██╔════╝██╔═══██╗██╔══██╗████╗ ████║██╔══██╗██╔════╝
+// ██████╔╝██║     ███████║   ██║   ███████║█████╗  ██║   ██║██████╔╝██╔████╔██║███████║███████╗
+// ██╔═══╝ ██║     ██╔══██║   ██║   ██╔══██║██╔══╝  ██║   ██║██╔══██╗██║╚██╔╝██║██╔══██║╚════██║
+// ██║     ███████╗██║  ██║   ██║   ██║  ██║██║     ╚██████╔╝██║  ██║██║ ╚═╝ ██║██║  ██║███████║
+// ╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝      ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝
+// ═══════════════════════════════════════════════════════════════════════════
+
+class Platform {
+    constructor(x, y, width, height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.isPlayerOn = false;
+    }
+
+    update(speed) {
+        this.x -= speed;
+    }
+
+    isOffScreen() {
+        return this.x + this.width < -100;
+    }
+
+    draw(ctx) {
+        if (Images.platform?.complete && Images.platform.naturalWidth) {
+            ctx.drawImage(Images.platform, this.x, this.y, this.width, this.height);
+        } else {
+            // Fallback visual
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.strokeStyle = '#654321';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(this.x, this.y, this.width, this.height);
+        }
+    }
+
+    checkPlayerCollision(player) {
+        // Verifica se o player está caindo sobre a plataforma
+        if (player.dy > 0) {
+            const playerBottom = player.y + player.h;
+            const playerLeft = player.x;
+            const playerRight = player.x + player.w;
+            
+            // Verifica se está na altura certa e horizontalmente alinhado
+            if (playerBottom >= this.y && 
+                playerBottom <= this.y + this.height + 10 &&
+                playerRight > this.x && 
+                playerLeft < this.x + this.width) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+class PlatformManager {
+    constructor() {
+        this.platforms = [];
+    }
+
+    spawn() {
+        const width = CONFIG.PLATFORM_WIDTH * Game.scale;
+        const height = CONFIG.PLATFORM_HEIGHT * Game.scale;
+        const groundY = Game.canvas.height - Game.groundHeight;
+        
+        // Altura aleatória entre 30% e 70% da altura da tela
+        const minHeight = groundY * 0.3;
+        const maxHeight = groundY * 0.6;
+        const y = groundY - minHeight - (Math.random() * (maxHeight - minHeight));
+        
+        const x = Game.canvas.width + 100;
+        
+        const platform = new Platform(x, y, width, height);
+        this.platforms.push(platform);
+    }
+
+    update(speed, player) {
+        for (let i = this.platforms.length - 1; i >= 0; i--) {
+            this.platforms[i].update(speed);
+            
+            // Verificar colisão com player
+            if (this.platforms[i].checkPlayerCollision(player)) {
+                player.y = this.platforms[i].y - player.h;
+                player.dy = 0;
+                player.jumpCount = 0;
+                player.isFastFalling = false;
+                this.platforms[i].isPlayerOn = true;
+            } else {
+                this.platforms[i].isPlayerOn = false;
+            }
+
+            if (this.platforms[i].isOffScreen()) {
+                this.platforms.splice(i, 1);
+            }
+        }
+
+        this._checkSpawn();
+    }
+
+    _checkSpawn() {
+        if (gameState.activePowerUpCimed) return;
+        
+        const lastPlatform = this.platforms[this.platforms.length - 1];
+        const distanceToLast = lastPlatform ? (Game.canvas.width - lastPlatform.x) : Game.canvas.width;
+        
+        const minDist = CONFIG.PLATFORM_MIN_DISTANCE * Game.scale;
+        const maxDist = CONFIG.PLATFORM_MAX_DISTANCE * Game.scale;
+        const spawnThreshold = minDist + (Math.random(100, 250) * (maxDist - minDist));
+        
+        if (distanceToLast > spawnThreshold && Math.random() < CONFIG.PLATFORM_SPAWN_CHANCE) {
+            this.spawn();
+        }
+    }
+
+    draw(ctx) {
+        this.platforms.forEach(platform => platform.draw(ctx));
+    }
+
+    clear() {
+        this.platforms = [];
+    }
+}
+
 class Outdoor {
     constructor(x, y, width, height, img) {
         this.x = x;
@@ -1516,7 +1651,7 @@ class Renderer {
         ctx.fillRect(0, groundY, this.canvas.width, 2 * Game.scale);
     }
 
-    drawDebug(player, obstacles) {
+    drawDebug(player, obstacles, platforms) {
         if (!CONFIG.DEBUG_MODE) return;
 
         this.ctx.save();
@@ -1557,6 +1692,21 @@ class Renderer {
             this.ctx.font = '10px monospace';
             this.ctx.fillText(`#${index}`, ob.x, ob.y - 5);
         });
+
+        // Platforms hitbox
+        if (platforms) {
+            platforms.forEach((platform, index) => {
+                this.ctx.strokeStyle = platform.isPlayerOn ? '#00ffff' : '#ffaa00';
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+                this.ctx.fillStyle = platform.isPlayerOn ? 'rgba(0, 255, 255, 0.2)' : 'rgba(255, 170, 0, 0.2)';
+                this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = '10px monospace';
+                this.ctx.fillText(`P${index}`, platform.x, platform.y - 5);
+            });
+        }
 
         this._drawDebugPanel();
         this.ctx.restore();
@@ -1839,6 +1989,7 @@ class Game {
 
     //  PASSO 4: Criar managers
     obstacleManager = new ObstacleManager();
+    platformManager = new PlatformManager();
     outdoorManager = new OutdoorManager();
     powerUpManager = new PowerUpManager();
     ParticleSystem.instance = new ParticleSystem();
@@ -2059,6 +2210,7 @@ static resize() {
         gameState.currentSpeed = CONFIG.BASE_SPEED * Game.scale;
         gameState.frameCount = 0;
         obstacleManager.clear();
+        platformManager.clear();
         outdoorManager.clear();
         powerUpManager.clear();
         ParticleSystem.instance.clear();
@@ -2107,6 +2259,7 @@ static resize() {
         // Atualizar entidades
         player.update();
         obstacleManager.update(gameState.currentSpeed);
+        platformManager.update(gameState.currentSpeed, player);
         outdoorManager.update(gameState.currentSpeed);
         powerUpManager.update(gameState.currentSpeed);
         ParticleSystem.instance.update(gameState.currentSpeed);
@@ -2170,6 +2323,12 @@ static resize() {
 
         // Chão
         Renderer.instance.drawGround();
+        
+        // Plataformas
+        if (platformManager) {
+            platformManager.draw(Game.ctx);
+        }
+        
         // Partículas
         if (ParticleSystem.instance) {
             ParticleSystem.instance.draw(Game.ctx);
@@ -2215,8 +2374,8 @@ static resize() {
         }
         
         // Debug
-        if (player && obstacleManager) {
-            Renderer.instance.drawDebug(player, obstacleManager.obstacles);
+        if (player && obstacleManager && platformManager) {
+            Renderer.instance.drawDebug(player, obstacleManager.obstacles, platformManager.platforms);
         }
 
         // Score
@@ -2416,6 +2575,7 @@ class PowerUpManager {
 let gameState = null;
 let player = null;
 let obstacleManager = null;
+let platformManager = null;
 let outdoorManager = null;
 let powerUpManager = null;
 
