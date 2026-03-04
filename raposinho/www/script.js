@@ -52,7 +52,7 @@ const CONFIG = {
 
     // Plataformas
     PLATFORM_WIDTH: 950,
-    PLATFORM_HEIGHT: 100,
+    PLATFORM_HEIGHT: 80,
     PLATFORM_MIN_DISTANCE: 700,
     PLATFORM_MAX_DISTANCE: 1200,
     PLATFORM_SPAWN_CHANCE: 0.05
@@ -1116,22 +1116,26 @@ class Platform {
     }
 
     checkPlayerCollision(player) {
-        // Verifica se o player está caindo sobre a plataforma
-        if (player.dy > 0) {
-            const playerBottom = player.y + player.h;
-            const playerLeft = player.x;
-            const playerRight = player.x + player.w;
-            
-            // Verifica se está na altura certa e horizontalmente alinhado
-            if (playerBottom >= this.y && 
-                playerBottom <= this.y + this.height + 10 &&
-                playerRight > this.x && 
-                playerLeft < this.x + this.width) {
-                return true;
+            // Verifica se o player está caindo sobre a plataforma
+            if (player.dy > 0) {
+                const playerBottom = player.y + player.h;
+                const playerLeft = player.x;
+                const playerRight = player.x + player.w;
+                
+                // Define a espessura da hitbox de colisão no topo (em pixels)
+                // Ajuste esse valor de acordo com a velocidade máxima de queda do player
+                const topHitboxThickness = 20; 
+                
+                // Verifica se está na altura certa (apenas na borda superior) e horizontalmente alinhado
+                if (playerBottom >= this.y && 
+                    playerBottom <= this.y + topHitboxThickness && 
+                    playerRight > this.x && 
+                    playerLeft < this.x + this.width) {
+                    return true;
+                }
             }
+            return false;
         }
-        return false;
-    }
 }
 
 class PlatformManager {
@@ -1958,7 +1962,7 @@ class NotificationManager {
 class Game {
     static canvas = document.getElementById('gameCanvas');
     static ctx = Game.canvas.getContext('2d');
-    static scale = 1;
+    static scale = 100;
     static groundHeight = CONFIG.GROUND_HEIGHT;
 
     static init() {
@@ -1977,7 +1981,7 @@ class Game {
     console.log(' Canvas configurado:', {
         width: Game.canvas.width,
         height: Game.canvas.height,
-        scale: Game.scale.toFixed(2)
+        scale: Game.scale.toFixed(3)
     });
 
     //  PASSO 2: Criar GameState
@@ -2028,7 +2032,7 @@ static resize() {
     if (isPortrait) {
         Game.scale = Math.min(viewportWidth / 650, viewportHeight / 850);
     } else {
-        Game.scale = Math.min(viewportWidth / 800, viewportHeight / 500);
+        Game.scale = Math.min(viewportWidth / 1000, viewportHeight / 700);
     }
 
     Game.scale = Math.max(0.5, Math.min(Game.scale, 2.5));
