@@ -12,7 +12,7 @@
 const CONFIG = {
     // Física
     GRAVITY: 0.6,
-    JUMP_FORCE: -14,
+    JUMP_FORCE: -17,
     FAST_FALL_MULTIPLIER: 1.8,
 
     // Velocidade
@@ -51,11 +51,13 @@ const CONFIG = {
 
 
     // Plataformas
-    PLATFORM_WIDTH: 950,
-    PLATFORM_HEIGHT: 80,
-    PLATFORM_MIN_DISTANCE: 700,
-    PLATFORM_MAX_DISTANCE: 1200,
-    PLATFORM_SPAWN_CHANCE: 0.05
+    PLATFORM_WIDTH: 400,
+    PLATFORM_HEIGHT: 60,
+    PLATFORM_MIN_DISTANCE: 400,
+    PLATFORM_MAX_DISTANCE: 800,
+    PLATFORM_SPAWN_CHANCE: 0.15,
+    PLATFORM_OBSTACLE_SPAWN_CHANCE: 0.3,
+    MIN_PLATFORM_OUTDOOR_DISTANCE: 300
 };
 
 
@@ -806,6 +808,7 @@ class Obstacle {
         this.wobbleAmplitude = config.wobbleAmplitude;
         this.wobbleSpeed = config.wobbleSpeed;
         this.wobblePhase = config.wobblePhase;
+        this.onPlatform = config.onPlatform || false;
 
         // Hitbox calculada dinamicamente
         this.hitBox = null;
@@ -961,7 +964,7 @@ class ObstacleManager {
         this.obstacles = [];
     }
 
-    spawn() {
+    spawn(platform = null) {
         const types = ['bola', 'juiz', 'chute'];
         const type = types[Math.floor(Math.random() * types.length)];
 
@@ -971,41 +974,49 @@ class ObstacleManager {
         const size = Math.max(24, sizeBase);
 
         const groundY = Game.canvas.height - Game.groundHeight;
-        const canBeAir = type !== 'juiz';
-        const isAirborne = canBeAir && Math.random() < 0.7;
+        let y, x;
 
-        let y;
-        if (isAirborne) {
-            const jumpHeight = Math.abs(CONFIG.JUMP_FORCE);
-            const maxDoubleJumpHeight = (jumpHeight * 1.5) + (jumpHeight * 0.85 * 1.5);
-            const maxObstacleHeight = maxDoubleJumpHeight * (0.6 + Math.random() * 0.4);
-
-            const flyHeightMultiplier = Math.random();
-            const lift = flyHeightMultiplier > 0.5
-                ? maxObstacleHeight * (0.4 + Math.random() * 0.6)
-                : maxObstacleHeight * (0.1 + Math.random() * 0.7);
-
-            y = groundY - size - lift;
-            y = Math.max(20 * Game.scale, y);
+        if (platform) {
+            // Spawnar na plataforma
+            y = platform.y - size;
+            x = platform.x + (Math.random() * (platform.width - size));
         } else {
-            y = groundY - size;
+            // Spawnar no chão ou no ar (lógica original)
+            const canBeAir = type !== 'juiz';
+            const isAirborne = canBeAir && Math.random() < 0.7;
+
+            if (isAirborne) {
+                const jumpHeight = Math.abs(CONFIG.JUMP_FORCE);
+                const maxDoubleJumpHeight = (jumpHeight * 1.5) + (jumpHeight * 0.85 * 1.5);
+                const maxObstacleHeight = maxDoubleJumpHeight * (0.6 + Math.random() * 0.4);
+
+                const flyHeightMultiplier = Math.random();
+                const lift = flyHeightMultiplier > 0.5
+                    ? maxObstacleHeight * (0.4 + Math.random() * 0.6)
+                    : maxObstacleHeight * (0.1 + Math.random() * 0.7);
+
+                y = groundY - size - lift;
+                y = Math.max(20 * Game.scale, y);
+            } else {
+                y = groundY - size;
+            }
+            x = Game.canvas.width + (100 + Math.random() * 200) * Game.scale;
         }
 
-        const x = Game.canvas.width + (100 + Math.random() * 200) * Game.scale;
-
         const obstacle = new Obstacle(type, x, y, size, {
-            isAirborne,
+            isAirborne: platform ? false : (type !== 'juiz' && Math.random() < 0.7),
             speedFactor: 0.6 + Math.random() * 0.8,
             rotation: (Math.random() - 0.5) * 0.8,
-            wobbleAmplitude: isAirborne ? (3 + Math.random() * 20) * Game.scale : 0,
+            wobbleAmplitude: (!platform && type !== 'juiz') ? (3 + Math.random() * 20) * Game.scale : 0,
             wobbleSpeed: 0.01 + Math.random() * 0.1,
-            wobblePhase: Math.random() * Math.PI * 2
+            wobblePhase: Math.random() * Math.PI * 2,
+            onPlatform: !!platform
         });
 
         this.obstacles.push(obstacle);
     }
 
-    update(speed) {
+    update(speed, platforms = []) {
         // Atualizar obstáculos
         for (let i = this.obstacles.length - 1; i >= 0; i--) {
             this.obstacles[i].update(speed);
@@ -1015,7 +1026,7 @@ class ObstacleManager {
             }
         }
 
-        // Spawn de novos obstáculos
+        // Spawn de novos obstáculos no chão/ar
         this._checkSpawn();
     }
 
@@ -1144,42 +1155,79 @@ class PlatformManager {
     }
 
     spawn() {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const isPortrait = viewportHeight > viewportWidth;
+
         const width = CONFIG.PLATFORM_WIDTH * Game.scale;
         const height = CONFIG.PLATFORM_HEIGHT * Game.scale;
         const groundY = Game.canvas.height - Game.groundHeight;
         
-        // Altura aleatória entre 30% e 70% da altura da tela
-        const minHeight = groundY * 0.3;
-        const maxHeight = groundY * 0.6;
-        const y = groundY - minHeight - (Math.random() * (maxHeight - minHeight));
+        if (this._wouldOverlapWithOutdoors()) return;
+
+        // Ajuste de limites de altura baseado na orientação/dispositivo
+        // No Mobile (Portrait), reduzimos o alcance para as plataformas não subirem demais
+        const minHeightPct = isPortrait ? 0.05 : 0.1;
+        const maxHeightPct = isPortrait ? 0.45 : 0.7;
+
+        const minHeight = groundY * minHeightPct;
+        const maxHeight = groundY * maxHeightPct;
         
+        // O Y é calculado subtraindo a altura do groundY (base para o topo)
+        const y = groundY - minHeight - (Math.random() * (maxHeight - minHeight));
         const x = Game.canvas.width + 100;
         
         const platform = new Platform(x, y, width, height);
         this.platforms.push(platform);
+        
+        if (Math.random() < CONFIG.PLATFORM_OBSTACLE_SPAWN_CHANCE) {
+            obstacleManager.spawn(platform);
+        }
     }
 
     update(speed, player) {
         for (let i = this.platforms.length - 1; i >= 0; i--) {
-            this.platforms[i].update(speed);
+            const platform = this.platforms[i];
+            platform.update(speed);
             
-            // Verificar colisão com player
-            if (this.platforms[i].checkPlayerCollision(player)) {
-                player.y = this.platforms[i].y - player.h;
+            if (platform.checkPlayerCollision(player)) {
+                player.y = platform.y - player.h;
                 player.dy = 0;
                 player.jumpCount = 0;
                 player.isFastFalling = false;
-                this.platforms[i].isPlayerOn = true;
+                platform.isPlayerOn = true;
             } else {
-                this.platforms[i].isPlayerOn = false;
+                platform.isPlayerOn = false;
             }
 
-            if (this.platforms[i].isOffScreen()) {
+            if (platform.isOffScreen()) {
                 this.platforms.splice(i, 1);
             }
         }
 
         this._checkSpawn();
+    }
+
+    _wouldOverlapWithOutdoors() {
+        if (!outdoorManager?.outdoors) return false;
+        
+        const newPlatformX = Game.canvas.width + 100;
+        const minDistance = CONFIG.MIN_PLATFORM_OUTDOOR_DISTANCE * Game.scale;
+        
+        return outdoorManager.outdoors.some(outdoor => 
+            Math.abs(newPlatformX - outdoor.x) < minDistance
+        );
+    }
+
+    _wouldOverlapWithPlatforms() {
+        if (this.platforms.length === 0) return false;
+        
+        const newPlatformX = Game.canvas.width + 100;
+        const minDistance = CONFIG.PLATFORM_MIN_DISTANCE * Game.scale;
+        
+        return this.platforms.some(platform => 
+            newPlatformX - (platform.x + platform.width) < minDistance
+        );
     }
 
     _checkSpawn() {
@@ -1188,9 +1236,11 @@ class PlatformManager {
         const lastPlatform = this.platforms[this.platforms.length - 1];
         const distanceToLast = lastPlatform ? (Game.canvas.width - lastPlatform.x) : Game.canvas.width;
         
+        if (this._wouldOverlapWithPlatforms()) return;
+        
         const minDist = CONFIG.PLATFORM_MIN_DISTANCE * Game.scale;
         const maxDist = CONFIG.PLATFORM_MAX_DISTANCE * Game.scale;
-        const spawnThreshold = minDist + (Math.random(100, 250) * (maxDist - minDist));
+        const spawnThreshold = minDist + (Math.random() * (maxDist - minDist));
         
         if (distanceToLast > spawnThreshold && Math.random() < CONFIG.PLATFORM_SPAWN_CHANCE) {
             this.spawn();
@@ -2029,38 +2079,34 @@ static resize() {
     const isPortrait = viewportHeight > viewportWidth;
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || viewportWidth <= 768;
 
-    if (isPortrait) {
-        Game.scale = Math.min(viewportWidth / 650, viewportHeight / 850);
-    } else {
-        Game.scale = Math.min(viewportWidth / 1000, viewportHeight / 700);
-    }
+    // Uso de operador ternário para simplificar a atribuição da escala
+    Game.scale = isPortrait 
+        ? Math.min(viewportWidth / 650, viewportHeight / 850) 
+        : Math.min(viewportWidth / 1000, viewportHeight / 700);
 
+    // Limitação (clamping) da escala
     Game.scale = Math.max(0.5, Math.min(Game.scale, 2.5));
 
-    if (isMobile) {
-        Game.groundHeight = Math.max(80, viewportHeight * 0.08) * Game.scale;
-    } else {
-        Game.groundHeight = Math.max(40, viewportHeight * 0.08) * Game.scale;
-    }
+    // Fatoração da lógica do chão, removendo repetição de código
+    Game.groundHeight = Math.max(isMobile ? 80 : 40, viewportHeight * 0.08) * Game.scale;
 
-    //  Atualizar player se já existe
+    // Atualizar player se já existe
     if (player) {
         player._updateDimensions();
     }
 
-    //  Atualizar background
-    if (Renderer.instance?.backgroundManager) {
-        Renderer.instance.backgroundManager.resize();
-    }
+    // Atualizar background com encadeamento opcional extra por segurança
+    Renderer.instance?.backgroundManager?.resize();
 
-    //  Atualizar partículas
-    if (ParticleSystem.instance && !ParticleSystem.instance.glowParticles.length) {
+    // Atualizar partículas verificando explicitamente o tamanho do array
+    if (ParticleSystem.instance && ParticleSystem.instance.glowParticles.length === 0) {
         ParticleSystem.instance._initGlowParticles();
     }
 
-    console.log(' Resize:', {
-        width: Game.canvas.width,
-        height: Game.canvas.height,
+    // Reutilização das constantes de viewport para o log, economizando acessos ao Game.canvas
+    console.log('Resize:', {
+        width: viewportWidth,
+        height: viewportHeight,
         scale: Game.scale.toFixed(2),
         groundHeight: Math.floor(Game.groundHeight),
         isMobile,
@@ -2262,8 +2308,8 @@ static resize() {
 
         // Atualizar entidades
         player.update();
-        obstacleManager.update(gameState.currentSpeed);
         platformManager.update(gameState.currentSpeed, player);
+        obstacleManager.update(gameState.currentSpeed, platformManager.platforms);
         outdoorManager.update(gameState.currentSpeed);
         powerUpManager.update(gameState.currentSpeed);
         ParticleSystem.instance.update(gameState.currentSpeed);

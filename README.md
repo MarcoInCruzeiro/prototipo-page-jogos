@@ -118,7 +118,7 @@ Pulo Triplo   → Desbloqueado aos 100 pontos
 ### Sistema de Pontuação
 
 ```
-Pontuação = Frames Sobrevividos ÷ 10
+Pontuação = Segundos Sobrevividos ÷ 10
 Velocidade Base = 7
 Aceleração = 0.002 por ponto (2% por segundo com limitador de maximo 200% do valor original)
 Velocidade Máxima = 2.5x da base
