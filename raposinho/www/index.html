@@ -44,7 +44,6 @@
         <div id="start-screen" class="modal">
             <div class="modal-content">
                 <h1 class="title">Raposinho<br>Runner <strong>(BETA)</strong></h1>
-                <p class="subtitle">Desvie dos obstáculos e tente ir longe!</p>
                 <hr class="divider">
                 <div class="controls-info" style="font-size: 1rem; line-height: 1.6; color: #ddd;">
                     <div class="difficulty-container">
@@ -52,16 +51,19 @@
                         <button class="pixel-btn normal" data-difficulty="normal">NORMAL</button>
                         <button class="pixel-btn hard active" data-difficulty="hard">DIFÍCIL</button>
                     </div>
-                    <p>PC: Pressione <strong>W</strong> para pular e <strong>S</strong> para agachar ou Mergulhar</p>
+                    <!-- <p>PC: Pressione <strong>W</strong> para pular e <strong>S</strong> para agachar ou Mergulhar</p>
                     <p>Mobile: <strong>Deslize</strong> na tela para Pular, Agachar ou Mergulhatr</p>
                     <p style="margin-top: 10px; font-size: 0.9em; color: #FFD700;">Dica: Pule duas vezes para ir mais alto!</p>
-                    <p style="margin-top: 4px; font-size: 0.8em; color: #ffffff;">Após 100 ponto pulo Triplo é ativado!</p>
+                    <p style="margin-top: 4px; font-size: 0.8em; color: #ffffff;">Após 100 ponto pulo Triplo é ativado!</p> -->
+                </div>
+                    <div id="start-ranking" class="ranking-container" style="margin-top:16px; text-align:left;">
                 </div>
                 <div class="button-group">
                     <button id="start-button" class="btn-main">JOGAR AGORA</button>
                     <br>
                     <a href="../../index.html" class="btn-main menu">MENU</a>
                 </div>
+
             </div>
         </div>
         <div id="game-over-screen" class="modal hidden">
@@ -72,6 +74,9 @@
                 <div style="font-size: 1.4rem; margin: 20px 0;">
                     PONTUAÇÃO FINAL<br>
                     <span id="final-score-val" style="color: #FFD700; font-weight: bold; font-size: 3rem;">0</span>
+                </div>
+                <div id="gameover-ranking" class="ranking-container" style="margin-top:12px; text-align:center;">
+                    <!-- Ranking será inserido aqui pelo script -->
                 </div>
                 <button id="restart-button" class="btn-main">TENTAR DE NOVO</button>
             </div>

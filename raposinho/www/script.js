@@ -1852,6 +1852,10 @@ class Renderer {
 // ╚═╝  ╚═══╝ ╚═════╝    ╚═╝   ╚═╝╚═╝     ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝
 // ═══════════════════════════════════════════════════════════════════════════
 
+
+
+
+
 class NotificationManager {
     static instance = null;
 
@@ -2049,6 +2053,14 @@ class Game {
     ParticleSystem.instance = new ParticleSystem();
     AudioManager.instance = new AudioManager();
     NotificationManager.instance = new NotificationManager();
+    RankingManager.instance = new RankingManager();
+
+    // Renderizar ranking inicial na tela de início (se houver elemento)
+    try {
+        RankingManager.instance.renderHTML('start-ranking');
+    } catch (e) {
+        console.warn('Ranking inicial não pôde ser renderizado:', e);
+    }
 
     //  PASSO 5: Criar Renderer
     Renderer.instance = new Renderer(Game.canvas, Game.ctx);
@@ -2366,6 +2378,13 @@ static resize() {
         // Background
         Renderer.instance.drawBackground();
 
+        // Ranking (apenas quando jogo não está rodando)
+        if (RankingManager.instance && !gameState.isRunning) {
+            const centerX = Game.canvas.width / 2;
+            const centerY = Game.canvas.height * 0.6;
+            RankingManager.instance.drawRanking(Game.ctx, centerX, centerY);
+        }
+
         // Outdoors
         if (outdoorManager) {
             outdoorManager.draw(Game.ctx);
@@ -2433,6 +2452,14 @@ static resize() {
             document.getElementById('score-display').innerText = gameState.score;
         }
 
+            // 3. INTEGRAÇÃO DO RANKING (POSIÇÃO CORRIGIDA)
+        // O ranking só deve aparecer se o jogo NÃO estiver rodando (Tela Inicial ou Game Over)
+        if (RankingManager.instance && !gameState.isRunning) {
+            const centerX = Game.canvas.width / 2;
+            const centerY = Game.canvas.height * 0.5; // Ajustado para ficar centralizado
+            RankingManager.instance.drawRanking(Game.ctx, centerX, centerY);
+        }
+
         // Indicador de God Mode
         if (CONFIG.NO_COLLISION_MODE) {
             Game.ctx.save();
@@ -2460,6 +2487,15 @@ static resize() {
         gameState.isRunning = false;
         gameState.isGameOver = true;
 
+        // Salvar score no ranking
+        if (RankingManager.instance) {
+            RankingManager.instance.addScore(gameState.score);
+            try {
+                RankingManager.instance.renderHTML('gameover-ranking');
+            } catch (e) {
+                console.warn('Não foi possível renderizar ranking (gameOver):', e);
+            }
+        }
 
         if (AudioManager.instance) {
             AudioManager.instance.fadeOut('bgMusic', 800);
@@ -2483,9 +2519,21 @@ static resize() {
         } else if (gameState.isGameOver) {
             startScreen.classList.add('hidden');
             gameOverScreen.classList.remove('hidden');
+            // Atualizar ranking exibido na tela de game over
+            try {
+                RankingManager.instance?.renderHTML('gameover-ranking');
+            } catch (e) {
+                console.warn('Erro ao atualizar ranking (game over):', e);
+            }
         } else {
             startScreen.classList.remove('hidden');
             gameOverScreen.classList.add('hidden');
+            // Atualizar ranking exibido na tela inicial
+            try {
+                RankingManager.instance?.renderHTML('start-ranking');
+            } catch (e) {
+                console.warn('Erro ao atualizar ranking (start):', e);
+            }
         }
     }
 }
@@ -2610,6 +2658,202 @@ class PowerUpManager {
         this.lastSpawnFrame = 0;
     }
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ██████╗ ███████╗███████╗████████╗    ███████╗ ██████╗ ██████╗ ██████╗ ███████╗
+// ██╔══██╗██╔════╝██╔════╝╚══██╔══╝    ██╔════╝██╔════╝██╔═══██╗██╔══██╗██╔════╝
+// ██████╔╝█████╗  ███████╗   ██║       ███████╗██║     ██║   ██║██████╔╝█████╗
+// ██╔══██╗██╔══╝  ╚════██║   ██║       ╚════██║██║     ██║   ██║██╔══██╗██╔══╝
+// ██████╔╝███████╗███████║   ██║       ███████║╚██████╗╚██████╔╝██║  ██║███████╗
+// ╚═════╝ ╚══════╝╚══════╝   ╚═╝       ╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Polyfill for CanvasRenderingContext2D.roundRect for broader browser support
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+        if (typeof radius === 'number') {
+            radius = {tl: radius, tr: radius, br: radius, bl: radius};
+        } else {
+            radius = Object.assign({tl:0, tr:0, br:0, bl:0}, radius || {});
+        }
+
+        this.beginPath();
+        this.moveTo(x + radius.tl, y);
+        this.lineTo(x + width - radius.tr, y);
+        this.quadraticCurveTo(x + width, y, x + width, y + radius.tr);
+        this.lineTo(x + width, y + height - radius.br);
+        this.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height);
+        this.lineTo(x + radius.bl, y + height);
+        this.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
+        this.lineTo(x, y + radius.tl);
+        this.quadraticCurveTo(x, y, x + radius.tl, y);
+        this.closePath();
+    };
+}
+
+class RankingManager {
+    static instance = null;
+    static STORAGE_KEY = 'raposinho_ranking';
+    static MAX_SCORES = 3;
+
+    constructor() {
+        this.scores = this.loadScores();
+        RankingManager.instance = this;
+    }
+
+    // Carrega as pontuações do armazenamento local do navegador [1, 5]
+    loadScores() {
+        try {
+            const data = localStorage.getItem(RankingManager.STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            console.error('Erro ao carregar ranking:', e);
+            return [];
+        }
+    }
+
+    // Salva a lista atualizada no localStorage [1, 6]
+    saveScores() {
+        try {
+            localStorage.setItem(RankingManager.STORAGE_KEY, JSON.stringify(this.scores));
+        } catch (e) {
+            console.error('Erro ao salvar ranking:', e);
+        }
+    }
+
+    // Adiciona uma nova pontuação se for maior que as existentes [2]
+    addScore(score) {
+        if (score <= 0) return; // Não salva pontuação zero
+
+        this.scores.push(score);
+        // Ordena de forma decrescente (maior para o menor) [2, 7]
+        this.scores.sort((a, b) => b - a);
+        // Mantém apenas o top 3 definido na constante [2]
+        this.scores = this.scores.slice(0, RankingManager.MAX_SCORES);
+        this.saveScores();
+    }
+
+    getTopScores() {
+        return this.scores;
+    }
+
+    // Renderiza o ranking em um elemento HTML (lista simples)
+// Renderiza o ranking em um elemento HTML
+    renderHTML(containerId) {
+        try {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+
+            const top = this.getTopScores();
+            let html = `
+                <div class="ranking-container">
+                    <h3 class="ranking-title">Suas Melhores Pontuações</h3>
+                    <ul class="ranking-list">
+            `;
+
+            for (let i = 0; i < RankingManager.MAX_SCORES; i++) {
+                const score = top[i] !== undefined ? top[i] : '---';
+                const isEmpty = top[i] === undefined;
+                
+                // Define a classe baseada na posição
+                let rankClass = 'rank-other';
+                if (!isEmpty) {
+                    if (i === 0) rankClass = 'rank-1'; // Ouro
+                    else if (i === 1) rankClass = 'rank-2'; // Prata
+                    else if (i === 2) rankClass = 'rank-3'; // Bronze
+                }
+
+                const scoreClass = isEmpty ? 'score-empty' : 'score-value';
+
+                html += `
+                    <li class="ranking-item ${rankClass}">
+                        <span class="rank-position">${i + 1}º</span>
+                        <span class="${scoreClass}">${score}</span>
+                    </li>
+                `;
+            }
+
+            html += `
+                    </ul>
+                </div>
+            `;
+
+            el.innerHTML = html;
+        } catch (e) {
+            console.error('RankingManager.renderHTML erro:', e);
+        }
+    }
+
+    /**
+     * CORREÇÃO: Verifica se o score entra no ranking de forma segura.
+     * Resolve o erro de comparação com 'undefined' quando o ranking está vazio [2].
+     */
+    isTopScore(score) {
+        if (this.scores.length < RankingManager.MAX_SCORES) return true;
+        const lowestScore = this.scores[this.scores.length - 1] || 0;
+        return score > lowestScore;
+    }
+
+    /**
+     * Desenha o painel de ranking no canvas.
+     * Utiliza Game.scale para garantir que o tamanho seja proporcional em qualquer tela [2, 3].
+     */
+    drawRanking(ctx, x, y, title = 'MELHORES PONTUAÇÕES') {
+        const s = Game.scale || 1;
+        const lineHeight = 40 * s;
+        const boxWidth = 320 * s;
+        const boxHeight = 180 * s;
+        const cornerRadius = 10 * s;
+
+        ctx.save();
+
+        // 1. Fundo do Painel (Semi-transparente para legibilidade) [3]
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.strokeStyle = '#FFD700'; // Cor Dourada
+        ctx.lineWidth = 3 * s;
+        
+        // Desenha um retângulo com bordas arredondadas (estilo visual aprimorado)
+        ctx.beginPath();
+        ctx.roundRect(x - boxWidth / 2, y - 40 * s, boxWidth, boxHeight, cornerRadius);
+        ctx.fill();
+        ctx.stroke();
+
+        // 2. Título do Ranking [3]
+        ctx.fillStyle = '#FFD700';
+        ctx.font = `bold ${22 * s}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText(title, x, y);
+
+        // 3. Renderização das Pontuações [4]
+        const topScores = this.getTopScores();
+        
+        for (let i = 0; i < RankingManager.MAX_SCORES; i++) {
+            const yPos = y + 40 * s + (i * lineHeight);
+            const score = topScores[i] !== undefined ? topScores[i] : '---';
+            const position = i + 1;
+
+            // Define cores para os medalhistas (Ouro, Prata, Bronze) [4]
+            ctx.fillStyle = position === 1 ? '#FFD700' : 
+                            position === 2 ? '#C0C0C0' : 
+                            position === 3 ? '#CD7F32' : '#FFFFFF';
+            
+            ctx.font = `bold ${20 * s}px monospace`;
+            
+            // Desenha a Posição (Ex: 1.)
+            ctx.textAlign = 'left';
+            ctx.fillText(`${position}.`, x - 130 * s, yPos);
+
+            // Desenha a Pontuação
+            ctx.textAlign = 'right';
+            ctx.fillText(score.toString(), x + 130 * s, yPos);
+        }
+
+        ctx.restore();
+    }
+    
+}
+
 
 
 // ═══════════════════════════════════════════════════════════════════════════
